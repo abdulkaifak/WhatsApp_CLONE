@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Clone</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #e5ddd5;
+        }
+        
+        .container {
+            width: 800px;
+            height: 600px;
+            display: flex;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sidebar {
+            width: 30%;
+            border-right: 1px solid #ccc;
+            background-color: #f8f8f8;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-header {
+            padding: 10px;
+            background-color: #075e54;
+            color: white;
+            text-align: center;
+        }
+        
+        .search-bar, .add-contact-bar {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+        
+        .search-bar input, .add-contact-bar input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+        }
+        
+        .contact-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .contact {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #ccc;
+            cursor: pointer;
+        }
+        
+        .contact:hover {
+            background-color: #e0e0e0;
+        }
+
+        .delete-contact {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .chat-area {
+            width: 70%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-header {
+            padding: 10px;
+            background-color: #075e54;
+            color: white;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .message-area {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #e5ddd5;
+        }
+        
+        .typing-area {
+            display: flex;
+            border-top: 1px solid #ccc;
+            background-color: white;
+        }
+        
+        .typing-area input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            outline: none;
+        }
+        
+        .typing-area button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #128c7e;
+            color: white;
+            cursor: pointer;
+            outline: none;
+        }
+        
+        .typing-area button:hover {
+            background-color: #075e54;
+        }
+        
+        .message {
+            background-color: #dcf8c6;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            max-width: 70%;
+            word-wrap: break-word;
+            position: relative;
+        }
+        
+        .message.sent {
+            align-self: flex-end;
+            background-color: #34b7f1;
+            color: white;
+        }
+
+        .timestamp {
+            font-size: 0.8em;
+            color: gray;
+            position: absolute;
+            bottom: -15px;
+            right: 10px;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Contacts</h2>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Search contacts...">
+            </div>
+            <div class="add-contact-bar">
+                <input type="text" id="add-contact-input" placeholder="Add new contact...">
+                <button id="add-contact-button">Add</button>
+            </div>
+            <ul class="contact-list" id="contact-list">
+                <!-- Contacts will appear here -->
+            </ul>
+        </div>
+        <div class="chat-area">
+            <div class="chat-header">
+                <h2 id="chat-header">Message</h2>
+                <button id="clear-chat-button">Clear Chat</button>
+            </div>
+            <div class="message-area" id="message-area">
+                <!-- Messages will appear here -->
+            </div>
+            <div class="typing-area">
+                <input type="text" id="message-input" placeholder="Type a message...">
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentContact = '';
+        const messages = {};
+
+        document.getElementById('send-button').addEventListener('click', sendMessage);
+        document.getElementById('message-input').addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        document.getElementById('search-input').addEventListener('input', function() {
+            const filter = this.value.toLowerCase();
+            const contacts = document.querySelectorAll('.contact');
+
+            contacts.forEach(contact => {
+                const contactName = contact.querySelector('.contact-name').textContent.toLowerCase();
+                if (contactName.includes(filter)) {
+                    contact.style.display = '';
+                } else {
+                    contact.style.display = 'none';
+                }
+            });
+        });
+
+        document.getElementById('add-contact-button').addEventListener('click', addContact);
+        document.getElementById('add-contact-input').addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addContact();
+            }
+        });
+
+        function addContact() {
+            const input = document.getElementById('add-contact-input');
+            const contactName = input.value.trim();
+
+            if (contactName) {
+                const contactList = document.getElementById('contact-list');
+                const newContact = document.createElement('li');
+                newContact.className = 'contact';
+                newContact.setAttribute('data-contact', contactName);
+
+                const contactNameSpan = document.createElement('span');
+                contactNameSpan.textContent = contactName;
+                contactNameSpan.className = 'contact-name';
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.className = 'delete-contact';
+                deleteButton.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    deleteContact(contactName);
+                });
+
+                newContact.appendChild(contactNameSpan);
+                newContact.appendChild(deleteButton);
+                
+                newContact.addEventListener('click', function() {
+                    currentContact = contactName;
+                    document.getElementById('chat-header').textContent = `Chat with ${currentContact}`;
+                    loadMessages(currentContact);
+                });
+
+                contactList.appendChild(newContact);
+                saveContacts();
+                input.value = '';
+            }
+        }
+
+        function deleteContact(contactName) {
+            const contactList = document.getElementById('contact-list');
+            const contacts = document.querySelectorAll('.contact');
+            
+            contacts.forEach(contact => {
+                if (contact.dataset.contact === contactName) {
+                    contactList.removeChild(contact);
+                }
+            });
+
+            delete messages[contactName];
+            saveContacts();
+        }
+
+        function saveContacts() {
+            const contacts = [];
+            document.querySelectorAll('.contact').forEach(contact => {
+                contacts.push(contact.dataset.contact);
+            });
+            localStorage.setItem('contacts', JSON.stringify(contacts));
+        }
+
+        function loadContacts() {
+            const contacts = JSON.parse(localStorage.getItem('contacts')) || [];
+            contacts.forEach(contactName => {
+                const contactList = document.getElementById('contact-list');
+                const newContact = document.createElement('li');
+                newContact.className = 'contact';
+                newContact.setAttribute('data-contact', contactName);
+
+                const contactNameSpan = document.createElement('span');
+                contactNameSpan.textContent = contactName;
+                contactNameSpan.className = 'contact-name';
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.className = 'delete-contact';
+                deleteButton.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    deleteContact(contactName);
+                });
+
+                newContact.appendChild(contactNameSpan);
+                newContact.appendChild(deleteButton);
+
+                newContact.addEventListener('click', function() {
+                    currentContact = contactName;
+                    document.getElementById('chat-header').textContent = `Chat with ${currentContact}`;
+                    loadMessages(currentContact);
+                });
+
+                contactList.appendChild(newContact);
+            });
+        }
+
+        document.querySelectorAll('.contact').forEach(contact => {
+            contact.addEventListener('click', function() {
+                currentContact = this.dataset.contact;
+                document.getElementById('chat-header').textContent = `Chat with ${currentContact}`;
+                loadMessages(currentContact);
+            });
+        });
+
+        document.getElementById('clear-chat-button').addEventListener('click', function() {
+            if (currentContact) {
+                messages[currentContact] = [];
+                loadMessages(currentContact);
+            }
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+
+            if (message && currentContact) {
+                if (!messages[currentContact]) {
+                    messages[currentContact] = [];
+                }
+
+                const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                messages[currentContact].push({ text: message, time: timestamp });
+                input.value = '';
+                loadMessages(currentContact);
+            }
+        }
+
+        function loadMessages(contact) {
+            const messageArea = document.getElementById('message-area');
+            messageArea.innerHTML = '';
+
+            if (messages[contact]) {
+                messages[contact].forEach(msg => {
+                    const newMessage = document.createElement('div');
+                    newMessage.textContent = msg.text;
+                    newMessage.className = 'message sent';
+
+                    const timestamp = document.createElement('span');
+                    timestamp.className = 'timestamp';
+                    timestamp.textContent = msg.time;
+
+                    newMessage.appendChild(timestamp);
+                    messageArea.appendChild(newMessage);
+                });
+
+                messageArea.scrollTop = messageArea.scrollHeight;
+            }
+        }
+
+        // Load contacts on page load
+        window.onload = loadContacts;
+    </script>
+</body>
+</html>
